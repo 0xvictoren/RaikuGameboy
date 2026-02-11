@@ -30,14 +30,12 @@
       position: fixed;
       inset: 0;
       z-index: 1;
-      background: url('landing.png') 
-                  center center / cover no-repeat fixed;
+      background: url('landing.jpg') center center / cover no-repeat fixed;
       background-size: cover;
       background-position: center;
       width: 100vw;
       height: 100vh;
     }
-
 
     .content {
       position: relative;
@@ -110,6 +108,29 @@
       box-shadow: 0 0 0 4px rgba(192, 255, 56, 0.4);
     }
 
+    /* ────────────────────────────────────────────────
+       MOBILE-SPECIFIC BACKGROUND IMAGE
+    ──────────────────────────────────────────────── */
+    @media (max-width: 768px) and (orientation: portrait) {
+      .background {
+        background-image: url('landing-mobile.jpg');
+        /* Optional adjustments — change these values based on your image */
+        background-position: center 35%;   /* moves focus up/down (higher % = lower on screen) */
+        background-size: cover;
+        /* background-size: 110% auto; */   /* alternative if you want less cropping on sides */
+        /* background-attachment: scroll; */  /* sometimes better on iOS — test both */
+      }
+    }
+
+    /* Finer tuning for very small / tall phones */
+    @media (max-width: 480px) and (orientation: portrait) {
+      .background {
+        background-image: url('landing-mobile.png');
+        background-position: center 30%;
+      }
+    }
+
+    /* Tablet / smaller landscape adjustments */
     @media (max-width: 1024px) {
       .buttons-container {
         margin-right: 10vw;
@@ -144,20 +165,19 @@
 <body>
 
   <div class="background"></div>
-  <div class="overlay"></div>
 
   <div class="content">
     <div class="buttons-container">
       <a href="2048.html" class="neon-link">2048</a>
       <a href="RaikuFlappy.html" class="neon-link">RaikuFlappy</a>
       <a href="Ship-shoots.html" class="neon-link">Ship-shoots</a>
-      <a href="TiltingMaze.html" class="neon-link">Tilt</a>
+      <a href="RaikuSnake.html" class="neon-link">Raiku Snake</a>
     </div>
   </div>
 
   <!-- Optional: smooth scroll behavior if linking to sections on the same page -->
   <script>
-    // Smooth scroll for in-page anchors (optional)
+    // Smooth scroll for in-page anchors (optional – currently not needed)
     document.querySelectorAll('.neon-link[href^="#"]').forEach(link => {
       link.addEventListener('click', e => {
         e.preventDefault();
@@ -170,5 +190,4 @@
   </script>
 
 </body>
-
 </html>

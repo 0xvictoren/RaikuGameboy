@@ -1,150 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Raiku Flappy</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<style>
-  body {
-    margin:0;
-    background:#000204;
-    overflow:hidden;
-    font-family:Arial,Helvetica,sans-serif;
-    touch-action:none;
-    color:#FDFDFF;
-  }
-  canvas { display:block; }
-  #ui {
-    position:absolute;
-    top:0; left:0;
-    width:100%; height:100%;
-    pointer-events:none;
-    text-align:center;
-  }
-  #header {
-    position: absolute;
-    top: 15px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 38px;
-    font-weight: bold;
-    color: #C0FF38;
-    text-shadow: 0 0 20px #C0FF38;
-    pointer-events: none;
-    z-index: 10;
-  }
-  #header img {
-    height: 2cm;
-    width: 5cm;
-  }
-  #score {
-    font-size:80px;
-    font-weight:bold;
-    margin-top:90px;
-    text-shadow:0 0 20px #FDFDFF;
-  }
-  #start {
-    position:absolute;
-    top:50%; left:50%;
-    transform:translate(-50%,-50%);
-    font-size:40px;
-    color:#C0FF38;
-    text-shadow:0 0 15px #C0FF38;
-    pointer-events:all;
-    cursor:pointer;
-  }
-  #gameover {
-    position:absolute;
-    top:50%; left:50%;
-    transform:translate(-50%,-50%);
-    font-size:36px;
-    color:#FDFDFF;
-    text-shadow:0 0 15px #C0FF38;
-    display:none;
-    pointer-events:all;
-  }
-  #footer {
-    position: absolute;
-    bottom: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 22px;
-    color: #C0FF38;
-    text-shadow: 0 0 12px #C0FF38;
-    opacity: 0.9;
-    pointer-events: none;
-    z-index: 5;
-  }
+  <meta charset="UTF-8" />
+  <title>Raiku Flappy</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <style>
+    body {
+      margin: 0;
+      background: #000204;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      touch-action: none;
+      color: #FDFDFF;
+    }
+    canvas { display: block; }
 
-  /* ── Game control buttons ── */
-  .game-btn {
-    position: absolute;
-    top: 15px;
-    font-size: 24px;
-    color: #C0FF38;
-    background: rgba(0,0,0,0.5);
-    padding: 10px 18px;
-    border-radius: 10px;
-    border: 2px solid #C0FF38;
-    cursor: pointer;
-    pointer-events: all;
-    text-shadow: 0 0 10px #C0FF38;
-    z-index: 15;
-    transition: all 0.15s ease;
-    text-decoration: none;
-    display: inline-block;
-  }
+    #ui {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      text-align: center;
+      user-select: none;
+    }
 
-  .game-btn:hover {
-    background: rgba(192,255,56,0.15);
-    box-shadow: 0 0 20px #C0FF38;
-  }
+    #header {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 32px;
+      font-weight: bold;
+      color: #C0FF38;
+      text-shadow: 0 0 16px #C0FF38;
+      pointer-events: none;
+      z-index: 10;
+    }
 
-  #restart-btn {
-    right: 15px;
-    display: none;
-  }
+    #header img {
+      height: 45px;          /* smaller on mobile */
+      width: auto;
+    }
 
-  #menu-btn {
-    right: 15px;
-    top: 70px;           /* below Restart button */
-    display: none;
-  }
-</style>
+    #score {
+      font-size: 72px;
+      font-weight: bold;
+      margin-top: 70px;       /* less margin on tall phones */
+      text-shadow: 0 0 20px #FDFDFF;
+    }
+
+    #start {
+      position: absolute;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 36px;
+      color: #C0FF38;
+      text-shadow: 0 0 15px #C0FF38;
+      pointer-events: all;
+      cursor: pointer;
+      line-height: 1.4;
+    }
+
+    #gameover {
+      position: absolute;
+      top: 48%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 34px;
+      color: #FDFDFF;
+      text-shadow: 0 0 15px #C0FF38;
+      display: none;
+      pointer-events: all;
+      line-height: 1.35;
+    }
+
+    #footer {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      color: #C0FF38;
+      text-shadow: 0 0 10px #C0FF38;
+      opacity: 0.85;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* Game control buttons */
+    .game-btn {
+      position: absolute;
+      top: 12px;
+      font-size: 20px;
+      color: #C0FF38;
+      background: rgba(0,0,0,0.6);
+      padding: 10px 20px;
+      border-radius: 12px;
+      border: 2px solid #C0FF38;
+      cursor: pointer;
+      pointer-events: all;
+      text-shadow: 0 0 8px #C0FF38;
+      z-index: 15;
+      transition: all 0.15s ease;
+      text-decoration: none;
+      min-width: 100px;
+      touch-action: manipulation;
+    }
+
+    .game-btn:active {
+      background: rgba(192,255,56,0.25);
+      transform: scale(0.96);
+    }
+
+    #restart-btn {
+      right: 12px;
+      display: none;
+    }
+
+    #menu-btn {
+      right: 12px;
+      top: 64px;             /* stacked below restart */
+      display: none;
+    }
+
+    /* ────────────────────────────────────────────────
+       iPhone 12 Pro Max (428×926) & similar large phones
+    ──────────────────────────────────────────────── */
+    @media only screen and (max-width: 430px) and (min-height: 900px) and (-webkit-min-device-pixel-ratio: 2.5) {
+      #header {
+        top: 8px;
+        font-size: 28px;
+      }
+      #header img {
+        height: 40px;
+      }
+      #score {
+        font-size: 64px;
+        margin-top: 60px;
+      }
+      #start {
+        font-size: 32px;
+        top: 42%;
+      }
+      #gameover {
+        font-size: 30px;
+        top: 45%;
+      }
+      .game-btn {
+        font-size: 18px;
+        padding: 9px 18px;
+        min-width: 90px;
+      }
+      #restart-btn { right: 10px; top: 10px; }
+      #menu-btn    { right: 10px; top: 58px; }
+      #footer {
+        font-size: 16px;
+        bottom: 8px;
+      }
+    }
+
+    /* Extra safety for very tall aspect ratios (like iPhone 12 Pro Max portrait) */
+    @media only screen and (max-width: 430px) and (min-height: 920px) {
+      #score { margin-top: 55px; font-size: 60px; }
+      #start { top: 40%; }
+      #gameover { top: 44%; }
+    }
+  </style>
 </head>
 <body>
-<canvas id="c"></canvas>
+  <canvas id="c"></canvas>
 
-<!-- Background music -->
-<audio id="bgm" loop preload="auto">
-  <source src="bodym.mp3" type="audio/mpeg">
-  Your browser does not support the audio element.
-</audio>
+  <!-- Background music -->
+  <audio id="bgm" loop preload="auto">
+    <source src="bodym.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
 
-<div id="ui">
-  <div id="header">
-    <img src="logo.png" alt="Raiku Logo">
+  <div id="ui">
+    <div id="header">
+      <img src="logo.png" alt="Raiku Logo">
+    </div>
+
+    <div id="score">0</div>
+
+    <button id="restart-btn" class="game-btn">Restart</button>
+    <a id="menu-btn" class="game-btn" href="index.html">Menu</a>
+
+    <div id="start">
+      Tap / Click to Start
+      <br><small>Best: <span id="bestStart">0</span></small>
+    </div>
+
+    <div id="gameover">
+      Game Over<br/>
+      <span style="font-size:22px;">Score: <span id="final">0</span></span><br/><br/>
+      Tap to Play Again
+    </div>
+
+    <div id="footer">Raiku  — Solana, but guaranteed.</div>
   </div>
-
-  <div id="score">0</div>
-
-  <!-- Added buttons -->
-  <button id="restart-btn" class="game-btn">Restart</button>
-  <a id="menu-btn" class="game-btn" href="index.html">Menu</a>
-
-  <div id="start">
-    Tap / Click to Start
-    <br><small>Best: <span id="bestStart">0</span></small>
-  </div>
-
-  <div id="gameover">
-    Game Over<br/>
-    <span style="font-size:24px;">Score: <span id="final">0</span></span><br/><br/>
-    Tap to Play Again
-  </div>
-
-  <div id="footer">Raiku  — Solana, but guaranteed.</div>
-</div>
 
 <script>
 // ────────────────────────────────────────────────
@@ -174,7 +228,7 @@ const NEON  = '#C0FF38';
 
 // ──────────────────────────────────────────────── Game state
 let bird = {
-  x: 160,
+  x: 140,               // moved slightly left on narrow screens
   y: H/2,
   vy: 0,
   angle: 0,
@@ -187,13 +241,13 @@ let score = 0;
 let highScore = parseInt(localStorage.getItem('raikuFlappyHS')) || 0;
 let gameRunning = false;
 
-// Base values
-let baseGravity   = 0.22;
-let baseFlapPower = -5.0;
-let basePipeSpeed = 3.5;
-let pipeGap       = 180;
-let pipeWidth     = 80;
-let nextPipeDist  = 280;
+// Mobile-tuned base values (desktop stays same because no override on wide screens)
+let baseGravity   = 0.24;
+let baseFlapPower = -5.2;
+let basePipeSpeed = 3.6;
+let pipeGap       = 170;        // slightly smaller gap → harder but better fit on tall screen
+let pipeWidth     = 28;
+let nextPipeDist  = 260;        // pipes appear a bit sooner
 
 let gravity   = baseGravity;
 let flapPower = baseFlapPower;
@@ -207,13 +261,22 @@ function flap() {
   }
   bird.vy = flapPower;
 }
+
 window.addEventListener('click', flap);
-window.addEventListener('touchstart', e => { e.preventDefault(); flap(); });
-window.addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); flap(); } });
+window.addEventListener('touchstart', e => { 
+  e.preventDefault(); 
+  flap(); 
+});
+window.addEventListener('keydown', e => { 
+  if (e.code === 'Space') { 
+    e.preventDefault(); 
+    flap(); 
+  } 
+});
 
 // ──────────────────────────────────────────────── Pipe generator
 function addPipe() {
-  const topHeight = 80 + Math.random() * (H - pipeGap - 160);
+  const topHeight = 60 + Math.random() * (H - pipeGap - 140);
   pipes.push({
     x: W + pipeWidth,
     top: topHeight,
@@ -225,16 +288,16 @@ function addPipe() {
 function update() {
   if (!gameRunning) return;
 
-  const difficulty = 1 + (score * 0.035);
+  const difficulty = 1 + (score * 0.038);   // slightly faster ramp-up
   gravity   = baseGravity   * difficulty;
-  flapPower = baseFlapPower * Math.min(difficulty, 1.6);
+  flapPower = baseFlapPower * Math.min(difficulty, 1.7);
   pipeSpeed = basePipeSpeed * difficulty;
 
   bird.vy += gravity;
   bird.y += bird.vy;
-  bird.angle = Math.min(Math.max(bird.vy * 0.07, -0.8), 1.2);
+  bird.angle = Math.min(Math.max(bird.vy * 0.08, -0.9), 1.3);
 
-  if (bird.y + 25 > H - 20 || bird.y - 25 < 20) {
+  if (bird.y + 24 > H - 18 || bird.y - 24 < 18) {
     endGame();
   }
 
@@ -247,9 +310,9 @@ function update() {
       scoreEl.textContent = score;
     }
 
-    const inX = bird.x + 25 > p.x && bird.x - 25 < p.x + pipeWidth;
-    const hitTop    = bird.y - 25 < p.top;
-    const hitBottom = bird.y + 25 > p.top + pipeGap;
+    const inX = bird.x + 24 > p.x && bird.x - 24 < p.x + pipeWidth;
+    const hitTop    = bird.y - 24 < p.top;
+    const hitBottom = bird.y + 24 > p.top + pipeGap;
     if (inX && (hitTop || hitBottom)) {
       endGame();
     }
@@ -270,7 +333,7 @@ function draw() {
   ctx.fillRect(0,0,W,H);
 
   ctx.shadowColor = NEON;
-  ctx.shadowBlur = 20;
+  ctx.shadowBlur = 18;
   ctx.fillStyle = NEON;
   pipes.forEach(p => {
     ctx.fillRect(p.x, 0, pipeWidth, p.top);
@@ -278,8 +341,8 @@ function draw() {
   });
   ctx.shadowBlur = 0;
 
-  ctx.fillStyle = 'rgba(253,253,255,0.08)';
-  ctx.fillRect(0, H-20, W, 20);
+  ctx.fillStyle = 'rgba(253,253,255,0.07)';
+  ctx.fillRect(0, H-18, W, 18);
 
   if (bird.gif.complete) {
     ctx.save();
@@ -287,21 +350,21 @@ function draw() {
     ctx.rotate(bird.angle);
 
     ctx.shadowColor = NEON;
-    ctx.shadowBlur = 30;
+    ctx.shadowBlur = 25;
     ctx.beginPath();
-    ctx.arc(0, 0, 30, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(192,255,56,0.35)';
+    ctx.arc(0, 0, 28, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(192,255,56,0.3)';
     ctx.fill();
     ctx.shadowBlur = 0;
 
-    const size = 60;
+    const size = 56;
     ctx.drawImage(bird.gif, -size/2, -size/2, size, size);
 
     ctx.restore();
   } else {
     ctx.fillStyle = WHITE;
     ctx.beginPath();
-    ctx.arc(bird.x, bird.y, 18, 0, Math.PI*2);
+    ctx.arc(bird.x, bird.y, 17, 0, Math.PI*2);
     ctx.fill();
   }
 }
@@ -327,7 +390,7 @@ function startGame() {
   menuBtn.style.display = 'block';
 
   bgm.currentTime = 0;
-  bgm.play().catch(e => console.log("Autoplay prevented:", e));
+  bgm.play().catch(() => {});
 
   addPipe();
 }
@@ -342,7 +405,7 @@ function endGame() {
   }
   finalEl.textContent = score;
   gameoverEl.innerHTML = `Game Over<br/>
-    <span style="font-size:24px;">Score: <span id="final">${score}</span></span><br/><br/>
+    <span style="font-size:22px;">Score: <span id="final">${score}</span></span><br/><br/>
     Tap to Play Again<br><small>Best: ${highScore}</small>`;
   gameoverEl.style.display = 'block';
 
@@ -350,10 +413,14 @@ function endGame() {
   menuBtn.style.display = 'none';
 }
 
-// ──────────────────────────────────────────────── Restart button logic
+// ──────────────────────────────────────────────── Buttons
 restartBtn.addEventListener('click', startGame);
+restartBtn.addEventListener('touchstart', e => {
+  e.preventDefault();
+  startGame();
+});
 
-// menuBtn is <a href="menu.html"> → no JS needed
+// menuBtn is <a href="index.html"> — no extra JS needed
 
 // ──────────────────────────────────────────────── Kick off
 bestStartEl.textContent = highScore;

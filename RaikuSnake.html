@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Raiku Snake ∞</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<style>
+  body { 
+    margin:0; 
+    background:#000204; 
+    overflow:hidden; 
+    height:100vh; 
+    touch-action:none; 
+    font-family:Arial,Helvetica,sans-serif;
+  }
+  canvas { 
+    display:block; 
+    width:100%; 
+    height:100%; 
+  }
+  #ui {
+    position:absolute; 
+    inset:0; 
+    pointer-events:none; 
+    color:#FDFDFF; 
+    text-align:center; 
+    z-index:5;
+    user-select:none;
+  }
+  #score { 
+    font-size: clamp(50px, 12vw, 120px); 
+    font-weight:bold; 
+    margin-top: clamp(20px, 6vh, 60px); 
+    text-shadow:0 0 40px #C0FF38, 0 0 80px #8aff00;
+  }
+  #highscore { 
+    font-size: clamp(20px, 5vw, 36px); 
+    margin-top:6px; 
+    opacity:0.9; 
+    text-shadow:0 0 20px #C0FF38;
+  }
+
+  /* Top bar: Logo left, buttons right */
+  #top-bar {
+    position:absolute; 
+    top:10px; 
+    left:10px; 
+    right:10px; 
+    display:flex; 
+    justify-content:space-between; 
+    align-items:center; 
+    z-index:20; 
+    pointer-events:all;
+  }
+  #logo { 
+    width: clamp(100px, 24vw, 160px); 
+    height:auto; 
+    opacity:0.85; 
+  }
+  .top-btn {
+    background:linear-gradient(145deg, #0a0f14, #000204);
+    color:#C0FF38; 
+    border:2px solid #C0FF38; 
+    padding:10px 20px; 
+    font-size:clamp(15px,4vw,18px); 
+    font-weight:bold; 
+    border-radius:8px; 
+    cursor:pointer; 
+    transition:all 0.2s; 
+    box-shadow:0 0 20px rgba(192,255,56,0.4);
+    text-decoration:none;
+  }
+  .top-btn:hover {
+    background:linear-gradient(145deg, #C0FF38, #9aff30); 
+    color:#000; 
+    box-shadow:0 0 40px rgba(192,255,56,0.8); 
+    transform:scale(1.05);
+  }
+  #buttons { display:flex; gap:12px; }
+
+  #gameover {
+    position:absolute; 
+    inset:0; 
+    display:flex; 
+    flex-direction:column; 
+    align-items:center; 
+    justify-content:center; 
+    background:rgba(0,0,0,0.8); 
+    color:#C0FF38; 
+    font-size:clamp(32px,8vw,54px); 
+    text-shadow:0 0 30px #C0FF38; 
+    pointer-events:all; 
+    opacity:0; 
+    transition:opacity 0.4s; 
+    z-index:30;
+  }
+  #gameover.show { opacity:1; }
+  #gameover .play-btn { padding:16px 40px; font-size:24px; }
+
+  /* Mobile D-Pad */
+  #mobile-controls {
+    position:absolute; 
+    bottom:clamp(40px,9vh,90px); 
+    left:50%; 
+    transform:translateX(-50%); 
+    display:none; 
+    pointer-events:all; 
+    z-index:15;
+  }
+  #mobile-controls.show { display:block; }
+  .dpad { 
+    position:relative; 
+    width:clamp(200px,48vw,260px); 
+    height:clamp(200px,48vw,260px); 
+  }
+  .dir-btn {
+    position:absolute; 
+    width:clamp(60px,14vw,80px); 
+    height:clamp(60px,14vw,80px); 
+    background:linear-gradient(145deg,#0a0f14,#000); 
+    border:3px solid #C0FF38; 
+    border-radius:14px; 
+    color:#C0FF38; 
+    font-size:clamp(32px,8vw,44px); 
+    display:flex; 
+    align-items:center; 
+    justify-content:center; 
+    box-shadow:0 0 25px rgba(192,255,56,0.5); 
+    touch-action:manipulation;
+  }
+  .dir-btn:active { 
+    background:#C0FF38; 
+    color:#000; 
+    box-shadow:0 0 50px #C0FF38; 
+    transform:scale(0.9); 
+  }
+  .up    { top:0;    left:50%; transform:translateX(-50%); }
+  .down  { bottom:0; left:50%; transform:translateX(-50%); }
+  .left  { left:0;   top:50%;  transform:translateY(-50%); }
+  .right { right:0;  top:50%;  transform:translateY(-50%); }
+
+  @media (max-width:768px) { 
+    #mobile-controls { display:block; } 
+    #top-bar { top:6px; left:6px; right:6px; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+
+<div id="top-bar">
+  <img id="logo" src="logo.png" alt="Raiku ∞">
+  <div id="buttons">
+    <button id="restart-btn" class="top-btn">Restart</button>
+    <a id="menu-btn" class="top-btn" href="index.html">Menu</a>
+  </div>
+</div>
+
+<div id="ui">
+  <div id="score">0</div>
+  <div id="highscore">Best: 0</div>
+</div>
+
+<div id="gameover">
+  <div>GAME OVER</div>
+  <div style="font-size:60%; margin:24px 0;">Score: <span id="final-score">0</span></div>
+  <button id="play-again" class="top-btn play-btn">Play Again</button>
+</div>
+
+<div id="mobile-controls">
+  <div class="dpad">
+    <div class="dir-btn up" data-dir="up">▲</div>
+    <div class="dir-btn left" data-dir="left">◄</div>
+    <div class="dir-btn right" data-dir="right">►</div>
+    <div class="dir-btn down" data-dir="down">▼</div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────── Setup & Images
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const highscoreEl = document.getElementById('highscore');
+const gameoverEl = document.getElementById('gameover');
+const finalScoreEl = document.getElementById('final-score');
+const restartBtn = document.getElementById('restart-btn');
+const playAgainBtn = document.getElementById('play-again');
+
+// CUSTOM IMAGES - REPLACE THESE URLs WITH YOUR OWN!
+// Snake head (PNG with transparent background recommended, ~64x64px)
+const snakeHeadImg = new Image();
+snakeHeadImg.src = 'white.png'; // DEFAULT: Snake head
+
+// Food bubble (PNG ~64x64px)
+const foodImg = new Image();
+foodImg.src = 'sol.png'; // DEFAULT: Bubble/Apple
+
+// Optional: Snake body segment image (for trail, ~32x32px)
+const snakeBodyImg = new Image();
+snakeBodyImg.src = 'white.png'; // DEFAULT: Snake body
+
+let imagesLoaded = 0;
+const totalImages = 3;
+function imageLoaded() {
+  imagesLoaded++;
+  if (imagesLoaded === totalImages) console.log('✅ All custom images loaded!');
+}
+function imageError(img, name) {
+  console.warn(`⚠️ Failed to load ${name} - using fallback drawing`);
+  imageLoaded(); // Count as loaded to proceed
+}
+snakeHeadImg.onload = imageLoaded; snakeHeadImg.onerror = () => imageError(snakeHeadImg, 'snake head');
+foodImg.onload = imageLoaded; foodImg.onerror = () => imageError(foodImg, 'food bubble');
+snakeBodyImg.onload = imageLoaded; snakeBodyImg.onerror = () => imageError(snakeBodyImg, 'snake body');
+
+// ──────────────────────────────────────────────── Canvas Setup (DPR fixed for mobile)
+let W, H, cell = 40;
+let dpr = window.devicePixelRatio || 1;
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ──────────────────────────────────────────────── Game State
+let snake = [];
+let dx = 1, dy = 0;
+let food = {};
+let score = 0;
+let highScore = parseInt(localStorage.getItem('raikuSnakeHS') || '0');
+highscoreEl.textContent = `Best: ${highScore}`;
+let gameRunning = false;
+let lastTime = 0;
+let moveAccumulator = 0;
+const moveInterval = 0.085; // Speed
+
+const NEON = '#C0FF38';
+const BLACK = '#000204';
+
+// ──────────────────────────────────────────────── Controls
+const keys = {};
+window.addEventListener('keydown', e => {
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','KeyA','KeyS','KeyD'].includes(e.code)) e.preventDefault();
+  keys[e.code] = true;
+  if (!gameRunning) startGame();
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+function setDirection(nx, ny) {
+  if (nx === -dx && ny === -dy) return;
+  dx = nx; dy = ny;
+}
+
+function handleInput() {
+  if (keys['ArrowUp'] || keys['KeyW']) if (dy !== 1) setDirection(0, -1);
+  if (keys['ArrowDown'] || keys['KeyS']) if (dy !== -1) setDirection(0, 1);
+  if (keys['ArrowLeft'] || keys['KeyA']) if (dx !== 1) setDirection(-1, 0);
+  if (keys['ArrowRight'] || keys['KeyD']) if (dx !== -1) setDirection(1, 0);
+}
+
+// Mobile D-Pad
+document.querySelectorAll('.dir-btn').forEach(btn => {
+  const handler = () => {
+    if (!gameRunning) return startGame();
+    const dir = btn.dataset.dir;
+    if (dir === 'up' && dy !== 1) setDirection(0, -1);
+    if (dir === 'down' && dy !== -1) setDirection(0, 1);
+    if (dir === 'left' && dx !== 1) setDirection(-1, 0);
+    if (dir === 'right' && dx !== -1) setDirection(1, 0);
+  };
+  btn.addEventListener('touchstart', e => { e.preventDefault(); handler(); });
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); handler(); });
+});
+
+// ──────────────────────────────────────────────── Game Logic
+function spawnFood() {
+  let attempts = 0;
+  while (attempts++ < 50) {
+    food = {
+      x: Math.floor(Math.random() * (W / cell)),
+      y: Math.floor(Math.random() * (H / cell))
+    };
+    if (!snake.some(s => Math.abs(s.x - food.x) < 1 && Math.abs(s.y - food.y) < 1)) return;
+  }
+  endGame(); // Board full
+}
+
+function startGame() {
+  snake = [{x: Math.floor(W/cell/2), y: Math.floor(H/cell/2)}];
+  dx = 1; dy = 0;
+  score = 0;
+  scoreEl.textContent = '0';
+  gameoverEl.classList.remove('show');
+  gameRunning = true;
+  spawnFood();
+  lastTime = performance.now();
+  moveAccumulator = 0;
+  requestAnimationFrame(render);
+}
+
+function endGame() {
+  gameRunning = false;
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem('raikuSnakeHS', highScore);
+    highscoreEl.textContent = `Best: ${highScore}`;
+  }
+  finalScoreEl.textContent = score;
+  gameoverEl.classList.add('show');
+}
+
+function update(dt) {
+  if (!gameRunning) return;
+  moveAccumulator += dt;
+  if (moveAccumulator < moveInterval) return;
+  moveAccumulator -= moveInterval;
+
+  const head = {
+    x: (snake[0].x + dx + W/cell) % (W/cell),
+    y: (snake[0].y + dy + H/cell) % (H/cell)
+  };
+  snake.unshift(head);
+
+  // Eat food
+  if (Math.hypot(head.x - food.x, head.y - food.y) < 0.7) {
+    score++;
+    scoreEl.textContent = score;
+    spawnFood();
+  } else {
+    snake.pop();
+  }
+
+  // Self-collision
+  for (let i = 4; i < snake.length; i++) {
+    if (Math.hypot(head.x - snake[i].x, head.y - snake[i].y) < 0.6) {
+      endGame();
+      return;
+    }
+  }
+}
+
+// ──────────────────────────────────────────────── Draw with Custom Images
+function draw() {
+  // Background gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0a0f14');
+  grad.addColorStop(1, BLACK);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  ctx.strokeStyle = 'rgba(192,255,56,0.05)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= W; x += cell) {
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+  }
+  for (let y = 0; y <= H; y += cell) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+
+  // ─── FOOD BUBBLE (Custom Image + Glow) ───
+  const fx = food.x * cell + cell / 2;
+  const fy = food.y * cell + cell / 2;
+  const foodSize = cell * 0.85;
+  ctx.shadowColor = NEON;
+  ctx.shadowBlur = 30 + Math.sin(Date.now() * 0.004) * 10;
+  if (foodImg.complete && foodImg.naturalHeight > 0) {
+    ctx.drawImage(foodImg, fx - foodSize/2, fy - foodSize/2, foodSize, foodSize);
+  } else {
+    // Fallback: Glowing circle
+    ctx.fillStyle = NEON;
+    ctx.beginPath();
+    ctx.arc(fx, fy, foodSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(fx, fy, foodSize / 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  // ─── SNAKE BODY TRAIL (Custom body img or fallback circles) ───
+  ctx.shadowColor = NEON;
+  ctx.shadowBlur = 20;
+  for (let i = 1; i < snake.length; i++) {
+    const seg = snake[i];
+    const alpha = 0.4 + (i / snake.length) * 0.6;
+    ctx.globalAlpha = alpha;
+    const segSize = cell * (0.6 + alpha * 0.3);
+    const sx = seg.x * cell + cell / 2;
+    const sy = seg.y * cell + cell / 2;
+    if (snakeBodyImg.complete && snakeBodyImg.naturalHeight > 0) {
+      ctx.drawImage(snakeBodyImg, sx - segSize/2, sy - segSize/2, segSize, segSize);
+    } else {
+      // Fallback: Faded neon circle
+      ctx.fillStyle = NEON;
+      ctx.beginPath();
+      ctx.arc(sx, sy, segSize / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur = 0;
+
+  // ─── SNAKE HEAD (Custom Image + Rotation + Glow) ───
+  const head = snake[0];
+  const hx = head.x * cell + cell / 2;
+  const hy = head.y * cell + cell / 2;
+  const headSize = cell * 1.1;
+  ctx.shadowColor = NEON;
+  ctx.shadowBlur = 40;
+  ctx.save();
+  ctx.translate(hx, hy);
+  // Rotate based on direction
+  let angle = 0;
+  if (dx === 1) angle = 0;
+  else if (dx === -1) angle = Math.PI;
+  else if (dy === 1) angle = Math.PI / 2;
+  else if (dy === -1) angle = -Math.PI / 2;
+  ctx.rotate(angle);
+  if (snakeHeadImg.complete && snakeHeadImg.naturalHeight > 0) {
+    ctx.drawImage(snakeHeadImg, -headSize/2, -headSize/2, headSize, headSize);
+  } else {
+    // Fallback: White circle with eyes
+    ctx.fillStyle = 'white';
+    ctx.beginPath();
+    ctx.arc(0, 0, headSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = BLACK;
+    ctx.beginPath();
+    ctx.arc(-cell/8, -cell/8, cell/12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cell/8, -cell/8, cell/12, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  ctx.shadowBlur = 0;
+}
+
+// ──────────────────────────────────────────────── Main Loop
+function render(now = performance.now()) {
+  const dt = (now - lastTime) / 1000;
+  lastTime = now;
+  handleInput();
+  update(dt);
+  draw();
+  if (gameRunning) requestAnimationFrame(render);
+}
+
+// ──────────────────────────────────────────────── Init
+restartBtn.onclick = playAgainBtn.onclick = startGame;
+window.addEventListener('pointerdown', () => gameRunning || startGame(), {once: true});
+window.addEventListener('keydown', () => gameRunning || startGame(), {once: true});
+render();
+</script>
+</body>
+</html>
