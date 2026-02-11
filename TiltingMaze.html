@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Raiku Tilting Maze</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<style>
+  body { margin:0; background:#000204; overflow:hidden; font-family:Arial,Helvetica,sans-serif; touch-action:none; }
+  canvas { display:block; }
+  #ui { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; color:#FDFDFF; text-align:center; }
+  #level { font-size:48px; font-weight:bold; margin-top:30px; text-shadow:0 0 20px #C0FF38; }
+  #logo { position:absolute; top:20px; left:20px; width:160px; height:auto; pointer-events:none; opacity:0.9; z-index:100; }
+  #buttons { position:absolute; top:20px; right:20px; display:flex; flex-direction:column; gap:10px; pointer-events:all; z-index:100; }
+  .game-btn { background:linear-gradient(145deg, #0a0f14, #000204); color:#C0FF38; border:2px solid #C0FF38; padding:12px 24px; font-weight:bold; text-decoration:none; border-radius:8px; text-shadow:0 0 10px #C0FF38; box-shadow:0 0 20px rgba(192,255,56,0.3); cursor:pointer; transition:all 0.3s; }
+  .game-btn:hover { box-shadow:0 0 30px rgba(192,255,56,0.6); background:linear-gradient(145deg, #C0FF38, #8aff00); color:#000204; }
+  #start { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:40px; color:#C0FF38; text-shadow:0 0 15px #C0FF38; pointer-events:all; cursor:pointer; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.7;} }
+  #gameover { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:36px; color:#C0FF38; text-shadow:0 0 15px #C0FF38; display:none; pointer-events:all; }
+  #instructions { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); font-size:18px; color:#FDFDFF; text-shadow:0 0 10px #C0FF38; }
+  #permission { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:rgba(0,2,4,0.95); border:2px solid #C0FF38; padding:30px; border-radius:15px; text-align:center; display:none; }
+  #permission h2 { color:#C0FF38; margin:0 0 20px 0; text-shadow:0 0 15px #C0FF38; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<img id="logo" src="logo.png" alt="Raiku Logo">
+
+<div id="buttons">
+  <button id="restart-btn" class="game-btn">Restart</button>
+  <a id="menu-btn" class="game-btn" href="index.html">Menu</a>
+</div>
+
+<div id="ui">
+  <div id="level">Level 1</div>
+  <div id="start">Tilt Device or Use Arrow Keys<br/><small>Guide Neon Ball to Goal</small></div>
+  <div id="gameover">
+    Level Complete!<br/><br/>
+    <button id="next-btn" class="game-btn" style="font-size:24px;padding:15px 30px;">Next Level</button>
+  </div>
+  <div id="instructions">Tilt phone or arrows to roll • Neon glow = momentum</div>
+</div>
+
+<div id="permission">
+  <h2>🎮 Tilt Permission Needed</h2>
+  <p>Click START and allow Motion & Orientation access</p>
+  <p><small>Arrow keys work too!</small></p>
+</div>
+
+<script>
+// ──────────────────────────────────────────────── Setup
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const levelEl = document.getElementById('level');
+const startEl = document.getElementById('start');
+const gameoverEl = document.getElementById('gameover');
+const nextBtn = document.getElementById('next-btn');
+const restartBtn = document.getElementById('restart-btn');
+const permissionEl = document.getElementById('permission');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ──────────────────────────────────────────────── Raiku Brand Colors
+const BLACK = '#000204';
+const WHITE = '#FDFDFF';
+const NEON = '#C0FF38';
+
+// ──────────────────────────────────────────────── Game State
+let ball = { x: 100, y: 100, vx: 0, vy: 0, r: 20 };
+let tiltX = 0, tiltY = 0;
+let level = 1;
+let gameRunning = false;
+let goal = { x: 0, y: 0, r: 25 };
+let walls = [];
+let particles = [];
+const friction = 0.985;
+const bounce = 0.75;
+const gravity = 0.35;
+
+// ──────────────────────────────────────────────── 27 UNIQUE LEVELS (NO REPEATING!)
+const levels = [
+  // Level 1: Simple corridor
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [W/2-60,H/2,W/2-60,H/2+120], [W/2+60,H/2,W/2+60,H/2+120]
+  ],
+  // Level 2: Vertical barriers
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [120,120,120,320], [320,120,320,320], [220,220,420,220],
+    [520,170,520,370]
+  ],
+  // Level 3: Box maze
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [60,60,260,60], [60,260,260,260], [60,60,60,260], [260,60,260,160]
+  ],
+  // Level 4: Zigzag
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [150,100,350,100], [350,100,350,250], [350,250,150,250], [150,250,150,400]
+  ],
+  // Level 5: Spiral approach
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [200,150,200,350], [200,150,450,150], [450,150,450,350], [300,350,500,350]
+  ],
+  // Level 6: Double corridor
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [100,100,100,500], [400,100,400,500], [250,200,350,200], [250,350,350,350]
+  ],
+  // Level 7: Criss-cross
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [100,200,500,200], [200,100,200,500], [400,100,400,500]
+  ],
+  // Level 8: Labyrinth corners
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [80,80,280,80], [280,80,280,280], [80,280,280,280], [180,180,380,180]
+  ],
+  // Level 9: Winding path
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [120,120,320,120], [320,120,320,320], [120,320,320,320], [120,200,420,200]
+  ],
+  // Level 10: Central obstacle
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [W/2-80,H/2-80,W/2+80,H/2-80], [W/2+80,H/2-80,W/2+80,H/2+80],
+    [W/2+80,H/2+80,W/2-80,H/2+80], [W/2-80,H/2+80,W/2-80,H/2-80]
+  ],
+  // Level 11: Staircase
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [150,100,150,200], [250,200,250,300], [350,300,350,400], [450,400,450,500]
+  ],
+  // Level 12: Snake pattern
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [100,100,300,100], [300,100,300,250], [300,250,100,250], [100,250,100,400]
+  ],
+  // Level 13: Multiple chambers
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [200,150,200,350], [400,150,400,350], [300,200,500,200], [300,300,500,300]
+  ],
+  // Level 14: Diagonal maze
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [100,300,400,100], [400,100,700,400], [100,400,400,200]
+  ],
+  // Level 15: Ring around
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [150,150,450,150], [450,150,450,450], [150,450,450,450], [250,250,350,250]
+  ],
+  // Level 16: Bridge pattern
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [100,200,500,200], [200,100,200,300], [400,100,400,300], [300,300,300,400]
+  ],
+  // Level 17: Complex grid
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [150,100,150,250], [250,100,250,250], [350,100,350,250], [150,200,350,200]
+  ],
+  // Level 18: Wave pattern
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [120,120,220,220], [220,220,320,120], [320,120,420,220], [420,220,520,120]
+  ],
+  // Level 19: Fortress
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [200,200,400,200], [200,200,200,400], [400,200,400,400], [300,300,300,350]
+  ],
+  // Level 20: Tunnel system
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [100,150,100,350], [250,100,250,250], [400,250,400,450], [150,300,350,300]
+  ],
+  // Level 21: Labyrinth
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [120,120,320,120], [320,120,320,320], [120,320,320,320], [220,220,220,420]
+  ],
+  // Level 22: Diamond path
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [W/2,100,W/2-100,250], [W/2-100,250,W/2,400], [W/2,400,W/2+100,250]
+  ],
+  // Level 23: Multi-path
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [150,150,150,350], [350,150,350,350], [250,200,250,300], [400,250,400,450]
+  ],
+  // Level 24: Spiral tight
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [300,100,300,200], [300,200,500,200], [500,200,500,400], [300,400,300,400]
+  ],
+  // Level 25: Checkerboard
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [120,120,220,220], [320,120,420,220], [120,320,220,420], [320,320,420,420]
+  ],
+  // Level 26: Final challenge
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [100,100,300,100], [300,100,300,300], [100,300,300,300], [200,200,400,200]
+  ],
+  // Level 27: Victory gauntlet
+  [
+    [0,0,W,0], [0,0,0,H], [W,0,W,H], [0,H,W,H],
+    [150,150,250,150], [250,150,250,350], [350,150,350,350], [150,350,350,350],
+    [200,200,300,200], [250,250,450,250]
+  ]
+];
+
+// ──────────────────────────────────────────────── Tilt Permission
+async function requestTiltPermission() {
+  if (typeof DeviceOrientationEvent.requestPermission !== 'function') {
+    return true;
+  }
+  try {
+    const permission = await DeviceOrientationEvent.requestPermission();
+    return permission === 'granted';
+  } catch (err) {
+    console.warn("Permission request failed", err);
+    return false;
+  }
+}
+
+// ──────────────────────────────────────────────── Input: Gyro + Keys
+window.addEventListener('deviceorientation', e => {
+  tiltX = (e.gamma || 0) / 10;
+  tiltY = -(e.beta || 0) / 10;
+}, true);
+
+const keys = {};
+window.addEventListener('keydown', e => keys[e.code] = true);
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+function getTilt() {
+  let tx = tiltX;
+  let ty = tiltY;
+  if (keys['ArrowLeft'] || keys['KeyA']) tx -= 0.6;
+  if (keys['ArrowRight'] || keys['KeyD']) tx += 0.6;
+  if (keys['ArrowUp'] || keys['KeyW']) ty -= 0.6;
+  if (keys['ArrowDown'] || keys['KeyS']) ty += 0.6;
+  return {x: Math.max(-1, Math.min(1, tx)), y: Math.max(-1, Math.min(1, ty))};
+}
+
+// ──────────────────────────────────────────────── Particles
+function addParticles(x, y, count = 12) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 6,
+      vy: (Math.random() - 0.5) * 6,
+      life: 40,
+      maxLife: 40,
+      size: Math.random() * 4 + 1
+    });
+  }
+}
+
+// FIXED: Line-circle collision + reflection
+function lineCollideCircle(lx1, ly1, lx2, ly2, cx, cy, cr, ball) {
+  const dx = lx2 - lx1;
+  const dy = ly2 - ly1;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  if (len === 0) return false;
+
+  const nx = dy / len;
+  const ny = -dx / len;
+
+  const px = cx - lx1;
+  const py = cy - ly1;
+  const proj = px * dx / len + py * dy / len;
+
+  if (proj < 0 || proj > len) return false;
+
+  const closestX = lx1 + (proj * dx / len);
+  const closestY = ly1 + (proj * dy / len);
+  const distX = cx - closestX;
+  const distY = cy - closestY;
+  const dist = Math.sqrt(distX*distX + distY*distY);
+
+  if (dist > cr || dist === 0) return false;
+
+  const unitDistX = distX / dist;
+  const unitDistY = distY / dist;
+
+  const penetration = cr - dist;
+  ball.x += unitDistX * penetration * 1.01;
+  ball.y += unitDistY * penetration * 1.01;
+
+  const dot = ball.vx * nx + ball.vy * ny;
+  ball.vx -= 2 * dot * nx;
+  ball.vy -= 2 * dot * ny;
+  ball.vx *= bounce;
+  ball.vy *= bounce;
+
+  addParticles(ball.x, ball.y, 3);
+  return true;
+}
+
+// ──────────────────────────────────────────────── Load Level
+function loadLevel(lvl) {
+  const lvlIndex = Math.min(lvl - 1, levels.length - 1); // Cap at 27
+  const levelData = levels[lvlIndex];
+  walls = levelData.slice();
+  goal.x = W - 100;
+  goal.y = H - 100;
+  ball.x = 100 + Math.random() * 50;
+  ball.y = 100 + Math.random() * 50;
+  ball.vx = 0;
+  ball.vy = 0;
+}
+
+// ──────────────────────────────────────────────── Update
+function update() {
+  if (!gameRunning) return;
+
+  const tilt = getTilt();
+  ball.vx += tilt.x * gravity;
+  ball.vy += tilt.y * gravity;
+  ball.vx *= friction;
+  ball.vy *= friction;
+  ball.x += ball.vx;
+  ball.y += ball.vy;
+
+  // Border collisions
+  if (ball.x - ball.r < 0) {
+    ball.x = ball.r;
+    ball.vx *= -bounce;
+  }
+  if (ball.x + ball.r > W) {
+    ball.x = W - ball.r;
+    ball.vx *= -bounce;
+  }
+  if (ball.y - ball.r < 0) {
+    ball.y = ball.r;
+    ball.vy *= -bounce;
+  }
+  if (ball.y + ball.r > H) {
+    ball.y = H - ball.r;
+    ball.vy *= -bounce;
+  }
+
+  // Maze walls
+  for (let w of walls) {
+    lineCollideCircle(w[0],w[1],w[2],w[3], ball.x, ball.y, ball.r, ball);
+  }
+
+  // Goal check
+  const dx = ball.x - goal.x;
+  const dy = ball.y - goal.y;
+  if (Math.sqrt(dx*dx + dy*dy) < ball.r + goal.r) {
+    addParticles(ball.x, ball.y, 20);
+    gameRunning = false;
+    gameoverEl.style.display = 'block';
+    return;
+  }
+
+  // Particles
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vx *= 0.98;
+    p.vy *= 0.98;
+    p.life--;
+  });
+  particles = particles.filter(p => p.life > 0);
+}
+
+// ──────────────────────────────────────────────── Draw
+function draw() {
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, '#0a0f14');
+  grad.addColorStop(1, BLACK);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+
+  ctx.shadowColor = NEON;
+  ctx.shadowBlur = 15;
+  ctx.strokeStyle = NEON;
+  ctx.lineWidth = 12;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let w of walls) {
+    ctx.moveTo(w[0], w[1]);
+    ctx.lineTo(w[2], w[3]);
+  }
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.shadowColor = NEON;
+  ctx.shadowBlur = 25;
+  ctx.beginPath();
+  ctx.arc(goal.x, goal.y, goal.r + Math.sin(Date.now() * 0.01) * 5, 0, Math.PI*2);
+  ctx.fillStyle = NEON;
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  const speed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy);
+  ctx.shadowColor = NEON;
+  ctx.shadowBlur = 12 + speed * 8;
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+  ctx.fillStyle = NEON;
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = WHITE;
+  ctx.beginPath();
+  ctx.arc(ball.x - ball.r/3, ball.y - ball.r/3, ball.r/4, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.shadowColor = NEON;
+  ctx.shadowBlur = 8;
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.life / p.maxLife;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+    ctx.fillStyle = NEON;
+    ctx.fill();
+    ctx.restore();
+  });
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 1;
+}
+
+// ──────────────────────────────────────────────── Game Control
+function render() {
+  update();
+  draw();
+  requestAnimationFrame(render);
+}
+
+async function startLevel() {
+  const hasPermission = await requestTiltPermission();
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
+  
+  if (!hasPermission && isMobile) {
+    permissionEl.style.display = 'block';
+    startEl.style.display = 'none';
+    return;
+  }
+  
+  permissionEl.style.display = 'none';
+  loadLevel(level);
+  gameRunning = true;
+  startEl.style.display = 'none';
+  gameoverEl.style.display = 'none';
+  levelEl.textContent = `Level ${level}`;
+}
+
+// ──────────────────────────────────────────────── Event Listeners
+nextBtn.onclick = () => {
+  level++;
+  startLevel();
+};
+
+restartBtn.onclick = () => {
+  level = 1;
+  startLevel();
+};
+
+startEl.onclick = startLevel;
+permissionEl.onclick = () => {
+  permissionEl.style.display = 'none';
+  startEl.style.display = 'block';
+};
+
+// ──────────────────────────────────────────────── Init
+render();
+
+if (!/Mobi|Android|iPhone|iPad|iPod/.test(navigator.userAgent)) {
+  setTimeout(startLevel, 1000);
+}
+</script>
+</body>
+</html>

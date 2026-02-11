@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Raiku Space Shooter</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<style>
+  body { margin:0; background:#000204; overflow:hidden; font-family:Arial,Helvetica,sans-serif; touch-action:none; }
+  canvas { display:block; }
+  #ui { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; color:#FDFDFF; text-align:center; }
+  #score { font-size:80px; font-weight:bold; margin-top:40px; text-shadow:0 0 20px #C0FF38; }
+  #wave  { font-size:32px; margin-top:10px; text-shadow:0 0 10px #C0FF38; }
+  #start { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:40px; color:#C0FF38; text-shadow:0 0 15px #C0FF38; pointer-events:all; cursor:pointer; }
+  #gameover { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:36px; color:#C0FF38; text-shadow:0 0 15px #C0FF38; display:none; pointer-events:all; }
+
+  .game-btn {
+    position: absolute;
+    right: 15px;
+    font-size: 26px;
+    color: #C0FF38;
+    background: rgba(0,0,0,0.5);
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: 2px solid #C0FF38;
+    cursor: pointer;
+    pointer-events: all;
+    text-shadow: 0 0 10px #C0FF38;
+    z-index: 10;
+    transition: all 0.15s ease;
+  }
+
+  .game-btn:hover {
+    background: rgba(192,255,56,0.15);
+    box-shadow: 0 0 20px #C0FF38;
+  }
+
+  #restart-btn {
+    top: 15px;
+    display: none;
+  }
+
+  #menu-btn {
+    top: 80px;          /* ← placed below Restart (15 + button height + gap) */
+    display: none;
+  }
+
+    #footer {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 22px;
+    color: #C0FF38;
+    text-shadow: 0 0 12px #C0FF38;
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+
+  #logo {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    width: 90px;
+    height: auto;
+    opacity: 0.92;
+    pointer-events: none;
+    filter: drop-shadow(0 0 10px #C0FF38) brightness(1.15);
+    z-index: 5;
+  }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <img id="logo" src="logo.png" alt="Raiku">
+
+  <div id="score">0</div>
+  <div id="wave">Wave: 1</div>
+  
+ 
+  <button id="restart-btn" class="game-btn">Restart</button>
+  <a id="menu-btn" class="game-btn" href="index.html">Menu</a>
+  
+
+  <div id="start">Tap / Click to Start<br/><small>Arrow Keys / WASD: Move | Space / Click: Shoot</small></div>
+  <div id="gameover">
+    Game Over<br/>
+    <span style="font-size:24px;">Score: <span id="final">0</span></span><br/>
+    <span style="font-size:20px;">Wave: <span id="finalwave">1</span></span><br/><br/>
+    Tap to Play Again
+  </div>
+
+  <div id="footer">Raiku  — Solana, but guaranteed.</div>
+</div>
+
+<audio id="bgm" loop>
+  <source src="bodym.mp3" type="audio/mpeg">
+  Your browser does not support the audio element.
+</audio>
+
+<script>
+// ──────────────────────────────────────────────── Setup
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const scoreEl  = document.getElementById('score');
+const waveEl   = document.getElementById('wave');
+const startEl  = document.getElementById('start');
+const gameoverEl = document.getElementById('gameover');
+const finalEl  = document.getElementById('final');
+const finalWaveEl = document.getElementById('finalwave');
+const restartBtn = document.getElementById('restart-btn');
+const menuBtn    = document.getElementById('menu-btn');
+const bgm        = document.getElementById('bgm');
+
+let W, H;
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// Load custom ship image
+const shipImg = new Image();
+shipImg.src = 'dragonfire.png';
+let shipImageReady = false;
+shipImg.onload = () => { shipImageReady = true; };
+
+// ──────────────────────────────────────────────── Colors & Game State
+const BLACK = '#000204';
+const WHITE = '#FDFDFF';
+const NEON  = '#C0FF38';
+
+let ship = { x: W/2, y: H*0.8, vx: 0, vy: 0, size: 32, shootCooldown: 0 };
+let bullets = [];
+let enemies = [];
+let particles = [];
+let score = 0;
+let wave = 1;
+let highScore = localStorage.getItem('raikuShooterHS') || 0;
+let gameRunning = false;
+
+const shipSpeed = 6;
+const shootDelay = 12;
+const bulletSpeed = 9;
+const diagonalAngle = 0.7;
+
+// Input
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'Space') shoot();
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+window.addEventListener('click', () => { if (gameRunning) shoot(); });
+window.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (gameRunning) shoot();
+});
+
+// ──────────────────────────────────────────────── Functions (shoot, explosion, spawn...)
+function shoot() {
+  if (!gameRunning || ship.shootCooldown > 0) return;
+  bullets.push({ x: ship.x, y: ship.y - ship.size/2, vx: 0, vy: -bulletSpeed });
+  bullets.push({ x: ship.x, y: ship.y - ship.size/2, vx: -bulletSpeed * Math.sin(diagonalAngle), vy: -bulletSpeed * Math.cos(diagonalAngle) });
+  bullets.push({ x: ship.x, y: ship.y - ship.size/2, vx: +bulletSpeed * Math.sin(diagonalAngle), vy: -bulletSpeed * Math.cos(diagonalAngle) });
+  ship.shootCooldown = shootDelay;
+}
+
+function addExplosion(x, y, count = 12) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 8,
+      vy: (Math.random() - 0.5) * 8,
+      life: 40, maxLife: 40,
+      size: Math.random() * 4 + 2
+    });
+  }
+}
+
+function spawnEnemy() {
+  const x = 100 + Math.random() * (W - 200);
+  enemies.push({ x, y: -28, vx: (Math.random() - 0.5)*1.5, vy: 3.5, size: 28, rot: 0 });
+}
+
+function nextWave() {
+  wave++;
+  waveEl.textContent = `Wave: ${wave}`;
+  for (let i = 0; i < 5; i++) {
+    setTimeout(() => { if (gameRunning) spawnEnemy(); }, i * 1000);
+  }
+  setTimeout(() => { if (gameRunning && enemies.length === 0) nextWave(); }, 7000);
+}
+
+// ──────────────────────────────────────────────── Update & Draw (unchanged logic)
+function update() {
+  if (!gameRunning) return;
+
+  ship.vx = 0; ship.vy = 0;
+  if (keys['ArrowLeft']  || keys['KeyA']) ship.vx = -shipSpeed;
+  if (keys['ArrowRight'] || keys['KeyD']) ship.vx =  shipSpeed;
+  if (keys['ArrowUp']    || keys['KeyW']) ship.vy = -shipSpeed;
+  if (keys['ArrowDown']  || keys['KeyS']) ship.vy =  shipSpeed;
+
+  ship.x = Math.max(ship.size, Math.min(W - ship.size, ship.x + ship.vx));
+  ship.y = Math.max(ship.size, Math.min(H - ship.size, ship.y + ship.vy));
+
+  ship.shootCooldown = Math.max(0, ship.shootCooldown - 1);
+
+  bullets = bullets.filter(b => {
+    b.x += b.vx; b.y += b.vy;
+    return b.y > -50 && b.y < H + 50 && b.x > -50 && b.x < W + 50;
+  });
+
+  enemies.forEach(e => {
+    e.rot += 0.15;
+    e.x += e.vx; e.y += e.vy;
+    if (e.x < -e.size) e.x = W;
+    if (e.x > W + e.size) e.x = -e.size;
+
+    const dx = ship.x - e.x, dy = ship.y - e.y;
+    if (Math.sqrt(dx*dx + dy*dy) < ship.size + e.size/2) endGame();
+  });
+  enemies = enemies.filter(e => e.y < H + 50);
+
+  for (let bi = bullets.length - 1; bi >= 0; bi--) {
+    const b = bullets[bi];
+    for (let ei = enemies.length - 1; ei >= 0; ei--) {
+      const e = enemies[ei];
+      if (Math.sqrt((b.x - e.x)**2 + (b.y - e.y)**2) < e.size/2 + 8) {
+        addExplosion(e.x, e.y, 20);
+        bullets.splice(bi, 1);
+        enemies.splice(ei, 1);
+        score += 10 * wave;
+        scoreEl.textContent = score;
+        break;
+      }
+    }
+  }
+
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.life--;
+    p.vx *= 0.98; p.vy *= 0.98;
+  });
+  particles = particles.filter(p => p.life > 0);
+
+  if (enemies.length === 0) nextWave();
+}
+
+function draw() {
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, '#0a0f14'); grad.addColorStop(1, BLACK);
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H);
+
+  ctx.fillStyle = WHITE;
+  for (let i = 0; i < 100; i++) {
+    const x = (i * 37) % W, y = (i * 23 + Date.now() * 0.1) % H;
+    ctx.globalAlpha = 0.3 + Math.sin(Date.now() * 0.01 + i) * 0.2;
+    ctx.fillRect(x, y, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+
+  ctx.shadowColor = NEON; ctx.shadowBlur = 15; ctx.fillStyle = NEON;
+  enemies.forEach(e => {
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(e.rot);
+    ctx.beginPath(); ctx.arc(0,0,e.size/2,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = BLACK;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(Math.random()*e.size/2 - e.size/4, Math.random()*e.size/2 - e.size/4, 4, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  });
+  ctx.shadowBlur = 0;
+
+  ctx.shadowColor = NEON; ctx.shadowBlur = 10; ctx.fillStyle = NEON;
+  bullets.forEach(b => {
+    ctx.save(); ctx.translate(b.x, b.y);
+    ctx.rotate(Math.atan2(b.vy, b.vx) + Math.PI/2);
+    ctx.fillRect(-2, -12, 4, 24); ctx.restore();
+  });
+  ctx.shadowBlur = 0;
+
+  ctx.save(); ctx.translate(ship.x, ship.y);
+  ctx.shadowColor = NEON; ctx.shadowBlur = 25;
+  ctx.beginPath(); ctx.arc(0,0,ship.size*1.2,0,Math.PI*2);
+  ctx.fillStyle = 'rgba(192,255,56,0.25)'; ctx.fill(); ctx.shadowBlur = 0;
+
+  if (shipImageReady) {
+    const imgW = ship.size * 2.2;
+    const imgH = ship.size * 2.8;
+    ctx.drawImage(shipImg, -imgW/2, -imgH * 0.65, imgW, imgH);
+  } else {
+    ctx.fillStyle = WHITE;
+    ctx.beginPath();
+    ctx.moveTo(0, -ship.size);
+    ctx.lineTo(ship.size, ship.size * 0.6);
+    ctx.lineTo(-ship.size, ship.size * 0.6);
+    ctx.closePath(); ctx.fill();
+  }
+
+  ctx.fillStyle = NEON;
+  ctx.beginPath();
+  ctx.moveTo(-10, ship.size * 0.35);
+  ctx.lineTo(0, ship.size * 0.9 + Math.sin(Date.now() * 0.03) * 5);
+  ctx.lineTo(10, ship.size * 0.35);
+  ctx.fill();
+
+  ctx.restore();
+
+  ctx.shadowColor = NEON; ctx.shadowBlur = 10;
+  particles.forEach(p => {
+    ctx.save(); ctx.globalAlpha = p.life / p.maxLife;
+    ctx.fillStyle = NEON; ctx.fillRect(p.x - p.size/2, p.y - p.size/2, p.size, p.size); ctx.restore();
+  });
+  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+}
+
+// ──────────────────────────────────────────────── Game loop
+function render() {
+  update(); draw();
+  requestAnimationFrame(render);
+}
+
+// ──────────────────────────────────────────────── Start / End / Restart
+function startGame() {
+  if (gameRunning) return;
+  gameRunning = true;
+  ship.x = W/2; ship.y = H*0.8;
+  bullets = []; enemies = []; particles = [];
+  score = 0; wave = 1;
+  scoreEl.textContent = '0';
+  waveEl.textContent = 'Wave: 1';
+  startEl.style.display = 'none';
+  gameoverEl.style.display = 'none';
+  restartBtn.style.display = 'block';
+  menuBtn.style.display    = 'block';
+
+  bgm.currentTime = 0;
+  bgm.play().catch(()=>{});
+
+  nextWave();
+}
+
+function endGame() {
+  gameRunning = false;
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem('raikuShooterHS', highScore);
+  }
+  finalEl.textContent = score;
+  finalWaveEl.textContent = wave;
+  gameoverEl.innerHTML = `Game Over<br/>
+    <span style="font-size:24px;">Score: <span id="final">${score}</span></span><br/>
+    <span style="font-size:20px;">Wave: <span id="finalwave">${wave}</span></span><br/><br/>
+    Tap to Play Again<br/><small>Best: ${highScore}</small>`;
+  gameoverEl.style.display = 'block';
+  restartBtn.style.display = 'none';
+  menuBtn.style.display    = 'none';
+  bgm.pause();
+  addExplosion(ship.x, ship.y, 30);
+}
+
+function goToMenu() {
+  gameRunning = false;
+  bgm.pause();
+  startEl.style.display = 'block';
+  gameoverEl.style.display = 'none';
+  restartBtn.style.display = 'none';
+  menuBtn.style.display    = 'none';
+  score = 0; wave = 1;
+  bullets = []; enemies = []; particles = [];
+  scoreEl.textContent = '0';
+  waveEl.textContent = 'Wave: 1';
+}
+
+// Button listeners
+restartBtn.addEventListener('click', startGame);
+menuBtn.addEventListener('click', goToMenu);
+
+// ──────────────────────────────────────────────── Init
+render();
+startEl.innerHTML += `<br><small>Best: ${highScore}</small>`;
+window.addEventListener('click', () => { if (!gameRunning) startGame(); });
+window.addEventListener('touchstart', e => { 
+  e.preventDefault(); 
+  if (!gameRunning) startGame(); 
+});
+</script>
+</body>
+</html>

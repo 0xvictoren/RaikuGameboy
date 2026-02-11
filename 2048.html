@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Raiku 2048</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <style>
+    body {
+      margin: 0;
+      background: #000204;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #FDFDFF;
+      overflow: hidden;
+      touch-action: none;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #container {
+      position: relative;
+      width: 480px;
+      height: 540px;
+      max-width: 90vw;
+      max-height: 92vh;
+      box-sizing: border-box;
+    }
+
+    #grid {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 480px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-gap: 12px;
+      background: rgba(10, 15, 20, 0.7);
+      border-radius: 12px;
+      padding: 12px;
+    }
+
+      #footer {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 22px;
+    color: #C0FF38;
+    text-shadow: 0 0 12px #C0FF38;
+    opacity: 0.9;
+    pointer-events: none;
+    z-index: 5;
+  }
+
+
+    .tile {
+      background: rgba(192, 255, 56, 0.08);
+      border: 2px solid rgba(192, 255, 56, 0.3);
+      border-radius: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 42px;
+      font-weight: bold;
+      color: #C0FF38;
+      text-shadow: 0 0 12px #C0FF38;
+      transition: all 0.12s ease;
+    }
+
+    .tile-0 { background: transparent; border-color: transparent; color: transparent; }
+    .tile-2   { background: rgba(192,255,56,0.12); }
+    .tile-4   { background: rgba(192,255,56,0.20); }
+    .tile-8   { background: rgba(192,255,56,0.28); }
+    .tile-16  { background: rgba(192,255,56,0.38); }
+    .tile-32  { background: rgba(192,255,56,0.48); }
+    .tile-64  { background: rgba(192,255,56,0.60); }
+    .tile-128, .tile-256, .tile-512, .tile-1024, .tile-2048 { 
+      background: #C0FF38; 
+      color: #000204; 
+      text-shadow: 0 0 15px #000; 
+    }
+
+    #ui {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    #logo {
+      position: absolute;
+      top: 0px;
+      left: 16px;
+      width: 100px;
+      height: auto;
+      filter: drop-shadow(0 0 12px #C0FF38);
+      opacity: 0.94;
+      z-index: 12;
+    }
+
+    #score {
+      position: absolute;
+      top: 2px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 34px;
+      font-weight: bold;
+      color: #C0FF38;
+      text-shadow: 0 0 14px #C0FF38, 0 0 24px rgba(192,255,56,0.5);
+      pointer-events: none;
+      z-index: 10;
+      white-space: nowrap;
+    }
+
+    .game-btn {
+      position: absolute;
+      top: 16px;
+      font-size: 19px;
+      color: #C0FF38;
+      background: rgba(0,0,0,0.6);
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 2px solid #C0FF38;
+      cursor: pointer;
+      pointer-events: all;
+      text-shadow: 0 0 9px #C0FF38;
+      z-index: 12;
+      transition: all 0.16s ease;
+      text-decoration: none;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+
+    .game-btn:hover {
+      background: rgba(192,255,56,0.18);
+      box-shadow: 0 0 22px #C0FF38;
+    }
+
+    #restart-btn {
+      right: 16px;
+      display: none;
+    }
+
+    #menu-btn {
+      right: 140px;           /* ← adjusted so they are side by side */
+      display: none;
+    }
+
+    #start, #gameover {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0,2,4,0.88);
+      font-size: 48px;
+      color: #C0FF38;
+      text-shadow: 0 0 20px #C0FF38;
+      pointer-events: all;
+      cursor: pointer;
+      z-index: 20;
+    }
+
+    #gameover { display: none; font-size: 42px; }
+    #gameover small { font-size: 24px; opacity: 0.9; }
+
+    @media (max-width: 500px) {
+      #container { height: 520px; }
+      #grid { height: 460px; }
+      #logo { width: 80px; top: 12px; left: 12px; }
+      #score { font-size: 28px; top: 18px; }
+      .game-btn { font-size: 17px; padding: 7px 14px; }
+      #restart-btn { right: 12px; }
+      #menu-btn   { right: 110px; }
+      .tile { font-size: 34px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="container">
+    <img id="logo" src="logo.png" alt="Raiku">
+
+    <div id="score">Score: 0</div>
+
+    <button id="restart-btn" class="game-btn">Restart</button>
+    <a id="menu-btn" class="game-btn" href="index.html">Menu</a>
+
+    <div id="grid"></div>
+
+    <div id="ui">
+      <div id="start">Tap / Click to Start<br><small>Use arrows or WASD</small></div>
+      <div id="gameover">
+        Game Over<br>
+        <small>Score: <span id="final-score">0</span></small><br><br>
+        Tap to Play Again
+      </div>
+    </div>
+  </div>
+
+  <audio id="bgm" loop preload="auto">
+    <source src="bodym.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const GRID_SIZE = 4;
+    const grid = document.getElementById('grid');
+    const scoreEl = document.getElementById('score');
+    const startScreen = document.getElementById('start');
+    const gameoverScreen = document.getElementById('gameover');
+    const finalScoreEl = document.getElementById('final-score');
+    const restartBtn = document.getElementById('restart-btn');
+    const menuBtn = document.getElementById('menu-btn');
+    const bgm = document.getElementById('bgm');
+
+    let board = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+    let score = 0;
+    let gameRunning = false;
+
+    // Create visual tiles
+    for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+      const tile = document.createElement('div');
+      tile.className = 'tile';
+      grid.appendChild(tile);
+    }
+
+    const tiles = document.querySelectorAll('.tile');
+
+    function updateTiles() {
+      tiles.forEach((tile, i) => {
+        const row = Math.floor(i / GRID_SIZE);
+        const col = i % GRID_SIZE;
+        const value = board[row][col];
+        tile.textContent = value || '';
+        tile.className = 'tile' + (value ? ` tile-${value}` : '');
+      });
+      scoreEl.textContent = `Score: ${score}`;
+    }
+
+    function addRandomTile() {
+      const empty = [];
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (board[r][c] === 0) empty.push({r, c});
+        }
+      }
+      if (empty.length === 0) return false;
+      const {r, c} = empty[Math.floor(Math.random() * empty.length)];
+      board[r][c] = Math.random() < 0.9 ? 2 : 4;
+      return true;
+    }
+
+    function slide(direction) {
+      let moved = false;
+      const newBoard = board.map(row => [...row]);
+
+      if (direction === 'up')    board = rotateLeft(board);
+      if (direction === 'down')  board = rotateRight(board);
+      if (direction === 'right') board = rotate180(board);
+
+      for (let r = 0; r < GRID_SIZE; r++) {
+        let row = board[r].filter(v => v !== 0);
+        for (let i = 0; i < row.length - 1; i++) {
+          if (row[i] === row[i+1]) {
+            row[i] *= 2;
+            score += row[i];
+            row.splice(i+1, 1);
+            moved = true;
+          }
+        }
+        while (row.length < GRID_SIZE) row.push(0);
+        board[r] = row;
+      }
+
+      if (direction === 'up')    board = rotateRight(board);
+      if (direction === 'down')  board = rotateLeft(board);
+      if (direction === 'right') board = rotate180(board);
+
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (board[r][c] !== newBoard[r][c]) moved = true;
+        }
+      }
+
+      if (moved) addRandomTile();
+
+      updateTiles();
+      checkGameOver();
+    }
+
+    function rotateLeft(m)  { return m[0].map((_, i) => m.map(row => row[i]).reverse()); }
+    function rotateRight(m) { return m[0].map((_, i) => m.map(row => row[row.length-1-i])); }
+    function rotate180(m)   { return m.map(row => [...row].reverse()).reverse(); }
+
+    function checkGameOver() {
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (board[r][c] === 0) return;
+          if (c < GRID_SIZE-1 && board[r][c] === board[r][c+1]) return;
+          if (r < GRID_SIZE-1 && board[r][c] === board[r+1][c]) return;
+        }
+      }
+      gameRunning = false;
+      finalScoreEl.textContent = score;
+      gameoverScreen.style.display = 'flex';
+      restartBtn.style.display = 'none';
+      menuBtn.style.display = 'none';
+      bgm.pause();
+    }
+
+    function startGame() {
+      board = Array(GRID_SIZE).fill().map(() => Array(GRID_SIZE).fill(0));
+      score = 0;
+      gameRunning = true;
+      addRandomTile();
+      addRandomTile();
+      updateTiles();
+      startScreen.style.display = 'none';
+      gameoverScreen.style.display = 'none';
+      restartBtn.style.display = 'block';
+      menuBtn.style.display = 'block';
+
+      bgm.currentTime = 0;
+      bgm.play().catch(() => {});
+    }
+
+    window.addEventListener('keydown', e => {
+      if (!gameRunning) return;
+      if (e.key === 'ArrowLeft'  || e.key.toLowerCase() === 'a') slide('left');
+      if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') slide('right');
+      if (e.key === 'ArrowUp'    || e.key.toLowerCase() === 'w') slide('up');
+      if (e.key === 'ArrowDown'  || e.key.toLowerCase() === 's') slide('down');
+    });
+
+    let touchStartX, touchStartY;
+    window.addEventListener('touchstart', e => {
+      if (!gameRunning && e.target.closest('#start, #gameover')) {
+        startGame();
+        return;
+      }
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    });
+
+    window.addEventListener('touchend', e => {
+      if (!gameRunning) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      const dy = e.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) > Math.abs(dy)) {
+        if (Math.abs(dx) > 40) slide(dx > 0 ? 'right' : 'left');
+      } else {
+        if (Math.abs(dy) > 40) slide(dy > 0 ? 'down' : 'up');
+      }
+    });
+
+    startScreen.addEventListener('click', startGame);
+    gameoverScreen.addEventListener('click', startGame);
+    restartBtn.addEventListener('click', startGame);
+
+    updateTiles();
+  </script>
+</body>
+</html>

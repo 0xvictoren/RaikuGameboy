@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Raiku Gameboy</title>
+  <style>
+    :root {
+      --black: #000204;
+      --white: #FDFDFF;
+      --neon:  #C0FF38;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--black);
+      color: var(--white);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Full-screen background */
+    .background {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background: url('landing.png') 
+                  center center / cover no-repeat fixed;
+      background-size: cover;
+      background-position: center;
+      width: 100vw;
+      height: 100vh;
+    }
+
+
+    .content {
+      position: relative;
+      z-index: 3;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 3rem 5vw;
+    }
+
+    .buttons-container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 540px;
+      margin-right: 15vw;
+      margin-bottom: 10vh;
+      margin-left: auto;
+    }
+
+    .neon-link {
+      position: relative;
+      display: inline-block;
+      padding: 1.2rem 2.8rem;
+      font-size: 1.18rem;
+      font-weight: 600;
+      color: var(--neon);
+      background: transparent;
+      border: 2px solid var(--neon);
+      border-radius: 14px;
+      text-decoration: none;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      cursor: pointer;
+      transition: all 0.32s ease;
+      overflow: hidden;
+    }
+
+    .neon-link:hover {
+      color: var(--black);
+      background: var(--neon);
+      box-shadow: 0 0 50px rgba(192, 255, 56, 0.65);
+      transform: translateY(-4px);
+    }
+
+    .neon-link::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255,255,255,0.28),
+        transparent
+      );
+      transition: left 0.65s ease;
+    }
+
+    .neon-link:hover::before {
+      left: 100%;
+    }
+
+    /* Accessibility: make sure focus is visible */
+    .neon-link:focus {
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(192, 255, 56, 0.4);
+    }
+
+    @media (max-width: 1024px) {
+      .buttons-container {
+        margin-right: 10vw;
+        margin-bottom: 12vh;
+        max-width: 480px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .buttons-container {
+        grid-template-columns: 1fr;
+        max-width: 360px;
+        margin-right: 8vw;
+        margin-bottom: 14vh;
+        gap: 1.2rem;
+      }
+
+      .neon-link {
+        padding: 1.1rem 2.2rem;
+        font-size: 1.05rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .buttons-container {
+        margin-right: 6vw;
+        margin-bottom: 16vh;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="background"></div>
+  <div class="overlay"></div>
+
+  <div class="content">
+    <div class="buttons-container">
+      <a href="2048.html" class="neon-link">2048</a>
+      <a href="RaikuFlappy.html" class="neon-link">RaikuFlappy</a>
+      <a href="Ship-shoots.html" class="neon-link">Ship-shoots</a>
+      <a href="TiltingMaze.html" class="neon-link">Tilt</a>
+    </div>
+  </div>
+
+  <!-- Optional: smooth scroll behavior if linking to sections on the same page -->
+  <script>
+    // Smooth scroll for in-page anchors (optional)
+    document.querySelectorAll('.neon-link[href^="#"]').forEach(link => {
+      link.addEventListener('click', e => {
+        e.preventDefault();
+        const target = document.querySelector(link.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth' });
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>
