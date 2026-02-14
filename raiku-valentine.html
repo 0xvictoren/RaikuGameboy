@@ -199,9 +199,9 @@
 
         function updateRaiku() {
             // Larger dragon on mobile
-            let sizeMultiplier = 0.09;                  // desktop/tablet
+            let sizeMultiplier = 0.06;                  // desktop/tablet
             if (window.innerWidth <= 768) {
-                sizeMultiplier = 0.135;                 // noticeably bigger on phones
+                sizeMultiplier = 0.11;                 // noticeably bigger on phones
             }
 
             raiku.size = Math.min(canvas.width, canvas.height) * sizeMultiplier;
@@ -436,3 +436,4 @@
 </body>
 
 </html>
+
